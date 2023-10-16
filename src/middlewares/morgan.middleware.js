@@ -8,7 +8,7 @@ const stream = {
 };
 
 const morganMiddleware = morgan(
-    ':remote-addr :method :url :status :res[content-length] - :response-time ms',
+    ':requestId :remote-addr :method :url :status :res[content-length] - :response-time ms',
     {
         stream: stream,
     }
