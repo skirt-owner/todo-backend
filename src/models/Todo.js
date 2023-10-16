@@ -36,9 +36,6 @@ const Todo = sequelize.define('Todo', {
     },
 });
 
-Todo.belongsToMany(Tag, { through: 'TodoTag' });
-Tag.belongsToMany(Todo, { through: 'TodoTag' });
-
 Todo.beforeDestroy((todo, options) => {
     logger.info(`Deleting todo with ID:${todo.id}`);
 });
@@ -53,5 +50,8 @@ Todo.beforeUpdate((todo, options) => {
     logger.info(`Updating todo with ID:${todo.id}`);
     todo.updatedAt = Sequelize.fn('NOW');
 });
+
+Tag.belongsToMany(Todo, { through: 'TodoTag', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Todo.belongsToMany(Tag, { through: 'TodoTag', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
 module.exports = { Todo };
