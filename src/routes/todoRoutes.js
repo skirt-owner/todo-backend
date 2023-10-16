@@ -13,7 +13,7 @@ const {
     removeTag,
     handleRouteNotFoundError,
     handleIncorrectPath,
-} = require('./todoControllers');
+} = require('../controllers/todoController');
 
 const router = express.Router();
 
