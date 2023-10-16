@@ -1,0 +1,27 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Backend for a TODO project",
+  "main": "src/app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/skirt-owner/todo-backend.git"
+  },
+  "author": "skirt-owner",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/skirt-owner/todo-backend/issues"
+  },
+  "homepage": "https://github.com/skirt-owner/todo-backend#readme",
+  "dependencies": {
+    "express": "^4.18.2",
+    "morgan": "^1.10.0",
+    "pg": "^8.11.3",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.33.0",
+    "winston": "^3.11.0"
+  }
+}
