@@ -33,7 +33,7 @@ npm start
 
 ## API Documentation
 
-The API documentation can be found in the [API Documentation](./docs/api.md) file. It contains detailed information about each API endpoint, request formats, and response formats.
+The API documentation can be found in the [API Documentation](docs/api.md) file. It contains detailed information about each API endpoint, request formats, and response formats.
 
 ## Technologies Used
 
