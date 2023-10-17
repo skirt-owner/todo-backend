@@ -8,8 +8,6 @@ package-lock.json
 
 *.env
 
-/migrations/
-
 /seeders/
 
 /models/
