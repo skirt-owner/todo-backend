@@ -73,6 +73,10 @@ src
 - utils: Contains the utility files such as database connection and logger.
 - app.js: Entry point of the application.
 
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
 ## Contact
 
 For any inquiries or questions, feel free to [contact me](mailto:skirtsfield@gmail.com) or reach out on [Telegram](https://t.me/skirtsfield).
