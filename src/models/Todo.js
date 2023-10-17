@@ -36,22 +36,30 @@ const Todo = sequelize.define('Todo', {
     },
 });
 
-Todo.beforeDestroy((todo, options) => {
-    logger.info(`Deleting todo with ID:${todo.id}`);
-});
-
-Todo.beforeCreate((todo, options) => {
+Todo.beforeCreate(async (todo, options) => {
     logger.info(`Creating new todo with ID:${todo.id}`);
     todo.createdAt = Sequelize.fn('NOW');
     todo.updatedAt = Sequelize.fn('NOW');
 });
 
-Todo.beforeUpdate((todo, options) => {
+Todo.beforeDestroy(async (todo, options) => {
+    const tags = await todo.getTags();
+    await todo.removeTags(tags);
+    logger.info(`Deleting todo with ID:${todo.id}meme`);
+})
+
+Todo.beforeUpdate(async (todo, options) => {
     logger.info(`Updating todo with ID:${todo.id}`);
     todo.updatedAt = Sequelize.fn('NOW');
 });
 
-Tag.belongsToMany(Todo, { through: 'TagsTodos', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-Todo.belongsToMany(Tag, { through: 'TagsTodos', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+// Todo.beforeDestroy(async (todo, options) => {
+//     const tags = await todo.getTags();
+//     await todo.removeTags(tags);
+//     logger.info(`Deleting todo with ID:${todo.id}meme`);
+// });
+
+Tag.belongsToMany(Todo, { through: 'TodoTag', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Todo.belongsToMany(Tag, { through: 'TodoTag', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
 module.exports = { Todo };

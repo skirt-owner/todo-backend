@@ -18,7 +18,7 @@ const getServerInfo = async (req, res) => {
 const createTodo = async (req, res) => {
     try {
         const { title, description, tags } = req.body;
-        const todo = await Todo.create({ title, description });
+        const todo = await Todo.create({ title, description, });
 
         if (tags && tags.length > 0) {
             const tagNames = tags.split(',');
@@ -39,7 +39,7 @@ const createTodo = async (req, res) => {
 
 const deleteTodos = async (req, res) => {
     try {
-        await Todo.destroy({ where: {} });
+        await Todo.destroy({ where: {}, individualHooks: true });
         logger.info('Deleted all todos');
         res.status(204).end();
     } catch (error) {
@@ -51,7 +51,7 @@ const deleteTodos = async (req, res) => {
 const deleteTodo = async (req, res) => {
     try {
         const { id } = req.params;
-        const deletedCount = await Todo.destroy({ where: { id } });
+        const deletedCount = await Todo.destroy({ where: { id }, individualHooks: true });
 
         if (deletedCount === 0) {
             logger.warn(`Todo with ID:${id} not found`);
@@ -182,7 +182,9 @@ const updateCompleted = async (req, res) => {
 const addTag = async (req, res) => {
     try {
         const { id } = req.params;
-        const { tag } = req.body;
+        const { tags } = req.body;
+
+        const tagNames = tags.split(',');
 
         const todo = await Todo.findByPk(id);
 
@@ -191,10 +193,12 @@ const addTag = async (req, res) => {
             return res.status(404).json({ error: 'Todo not found' });
         }
 
-        const [newTag] = await Tag.findOrCreate({ where: { name: tag } });
-        await todo.addTag(newTag);
+        for (let tagName of tagNames) {
+            let [tag, created] = await Tag.findOrCreate({ where: {name: tagName} });
+            await todo.addTag(tag);
+        }
         
-        logger.info(`Added tag "${tag}" to todo with ID:${id}`);
+        logger.info(`Added tags "${tags}" to todo with ID:${id}`);
         res.status(204).end();
     } catch (error) {
         logger.error(`Failed to add tag to todo: ${error.message}`);
@@ -221,6 +225,7 @@ const removeTag = async (req, res) => {
         }
 
         await todo.removeTag(existingTag);
+        await existingTag.destroy();
 
         logger.info(`Removed tag "${tag}" from todo with ID:${id}`);
         res.status(204).end();
