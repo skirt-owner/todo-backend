@@ -18,24 +18,43 @@ const getServerInfo = async (req, res) => {
 const createTodo = async (req, res) => {
     try {
         const { title, description, tags } = req.body;
-        const todo = await Todo.create({ title, description, });
+
+        if (!title) {
+            logger.error('Title for todo not provided');
+            return res.status(400).json({ error: 'Title for todo not provided' });
+        }
+
+        const todo = await Todo.create({ title, description });
 
         if (tags && tags.length > 0) {
             const tagNames = tags.split(',');
-
-            for (const tagName of tagNames) {
-                let [tag, created] = await Tag.findOrCreate({ where: { name: tagName } });
-                await todo.addTag(tag);
-            }
+            const tagPromises = tagNames.map(tagName =>
+                Tag.findOrCreate({ where: { name: tagName } })
+            );
+            const createdTags = await Promise.all(tagPromises);
+            const tagInstances = createdTags.map(([tag]) => tag);
+            await todo.addTags(tagInstances);
         }
 
         logger.info(`Created new todo with ID:${todo.id}`);
-        res.status(201).json(todo);
+
+        const createdTodo = await Todo.findByPk(todo.id, {
+            include: [
+                {
+                    model: Tag,
+                    attributes: ['id', 'name'],
+                    through: { attributes: [] },
+                }
+            ]
+        });
+
+        res.status(201).json(createdTodo);
     } catch (error) {
-        logger.error(`Failed to create a new note: ${error.message}`);
-        res.status(500).json({ error: 'Failed to create a new note' });
+        logger.error(`Failed to create a new todo: ${error.message}`);
+        res.status(500).json({ error: 'Failed to create a new todo' });
     }
 };
+
 
 const deleteTodos = async (req, res) => {
     try {
@@ -71,31 +90,52 @@ const editTodo = async (req, res) => {
         const { id } = req.params;
         const { title, description, tags } = req.body;
         
-        const [updatedCount, updatedTodo] = await Todo.update(
-        { title, description },
-        { where: { id }, returning: true, individualHooks: true }
-        );
+        if (!title && !description && !(tags && tags.length > 0)) {
+            logger.warn('No data provided for update');
+            return res.status(400).json({ error: 'No data provided for update' });
+        }
+        
+        const todo = await Todo.findByPk(id);
 
-        console.log(updatedTodo);
-
-        if (updatedCount === 0) {
-            logger.warn(`Todo with ID:${id} not found or the same`);
+        if (!todo) {
+            logger.warn('Todo not found');
             return res.status(404).json({ error: 'Todo not found' });
         }
 
-        await updatedTodo[0].setTags([]);
-
-        if (tags && tags.length > 0) {
-            const tagNames = tags.split(',');
-
-            for (const tagName of tagNames) {
-                let [tag, created] = await Tag.findOrCreate({ where: { name: tagName } });
-                await updatedTodo[0].addTag(tag);
-            }
+        if (title) {
+            todo.title = title;
         }
+        if (description) {
+            todo.description = description;
+        }
+        
+        if (tags && tags.length > 0) {
+            await todo.setTags([]);
 
+            const tagNames = tags.split(',');
+            const tagPromises = tagNames.map(tagName =>
+                Tag.findOrCreate({ where: { name: tagName } })
+            );
+            const createdTags = await Promise.all(tagPromises);
+            const tagInstances = createdTags.map(([tag]) => tag);
+            await todo.addTags(tagInstances);
+        }
+        
+        await todo.save();
+        
         logger.info(`Updated todo with ID:${id}`);
-        res.status(200).json(updatedTodo[0]);
+
+        const editedTodo = await Todo.findByPk(id, {
+            include: [
+                {
+                    model: Tag,
+                    attributes: ['id', 'name'],
+                    through: { attributes: [] },
+                },
+            ],
+        });
+
+        res.status(200).json(editedTodo);
     } catch (error) {
         logger.error(`Failed to update todo: ${error.message}`);
         res.status(500).json({ error: 'Failed to update todo' });
@@ -104,28 +144,39 @@ const editTodo = async (req, res) => {
 
 const getTodos = async (req, res) => {
     try {
-        const { sortBy, filterByTitle, filterByTags } = req.query;
-        
+        let { sortBy, filterByTitle, filterByTags } = req.query;
+
+        if (!sortBy) {
+            sortBy = 'DESC';
+        } else if (sortBy !== 'ASC' && sortBy !== 'DESC') {
+            return res.status(400).json({ error: 'Invalid sortBy value' });
+        }
+
         let whereClause = {};
         if (filterByTitle) {
             whereClause.title = filterByTitle;
         }
-        
+
         const todos = await Todo.findAll({
-            where: whereClause, 
-            order: [['createdAt', sortBy]], 
+            where: whereClause,
+            order: [['createdAt', sortBy]],
             include: [
                 {
                     model: Tag,
                     attributes: ['id', 'name'],
+                    through: { attributes: [] },
                 },
             ],
         });
-        
+
         if (filterByTags) {
+            const tags = filterByTags.split(',');
             const filteredTodos = todos.filter((todo) => {
-                return todo.Tags.some((tag) => tag.name === filterByTags);
+                return tags.every((tag) =>
+                    todo.Tags.some((todoTag) => todoTag.name === tag)
+                );
             });
+
             res.status(200).json(filteredTodos);
         } else {
             res.status(200).json(todos);
@@ -141,7 +192,11 @@ const getTodo = async (req, res) => {
         const { id } = req.params;
         const todo = await Todo.findByPk(
             id,
-            { include: [{ model: Tag, attributes: ['id', 'name'] }] }
+            { include: [{ 
+                model: Tag, 
+                attributes: ['id', 'name'] ,
+                through: { attributes: [] },
+            }] }
         );
 
         if (!todo) {
@@ -159,32 +214,37 @@ const getTodo = async (req, res) => {
 const updateCompleted = async (req, res) => {
     try {
         const { id } = req.params;
-        const { completed } = req.body;
-        
-        const [updatedCount, updatedTodo] = await Todo.update(
-            { completed },
-            { where: { id }, returning: true, individualHooks: true }
+
+        const todo = await Todo.findByPk(
+            id,
+            { include: [{ 
+                model: Tag, 
+                attributes: ['id', 'name'] ,
+                through: { attributes: [] },
+            }] }
         );
 
-        if (updatedCount === 0) {
-            logger.warn(`Todo with ID:${id} not found`);
+        if (!todo) {
             return res.status(404).json({ error: 'Todo not found' });
         }
 
+        todo.completed = !todo.completed;
+
+        await todo.save();
+
         logger.info(`Updated completed field of todo with ID:${id}`);
-        res.status(200).json(updatedTodo[0]);
+        res.status(200).json(todo);
     } catch (error) {
         logger.error(`Failed to update completed field of todo: ${error.message}`);
         res.status(500).json({ error: 'Failed to update completed field of todo' });
     }
 };
 
+
 const addTags = async (req, res) => {
     try {
         const { id } = req.params;
         const { tags } = req.body;
-
-        const tagNames = tags.split(',');
 
         const todo = await Todo.findByPk(id);
 
@@ -193,10 +253,13 @@ const addTags = async (req, res) => {
             return res.status(404).json({ error: 'Todo not found' });
         }
 
-        for (let tagName of tagNames) {
-            let [tag, created] = await Tag.findOrCreate({ where: {name: tagName} });
-            await todo.addTag(tag);
-        }
+        const tagNames = tags.split(',');
+        const tagPromises = tagNames.map(tagName =>
+            Tag.findOrCreate({ where: { name: tagName } })
+        );
+        const createdTags = await Promise.all(tagPromises);
+        const tagInstances = createdTags.map(([tag]) => tag);
+        await todo.addTags(tagInstances);
         
         logger.info(`Added tags "${tags}" to todo with ID:${id}`);
         res.status(204).end();
@@ -225,7 +288,6 @@ const removeTag = async (req, res) => {
         }
 
         await todo.removeTag(existingTag);
-        await existingTag.destroy();
 
         logger.info(`Removed tag "${tag}" from todo with ID:${id}`);
         res.status(204).end();
