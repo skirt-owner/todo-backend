@@ -9,7 +9,7 @@ const {
     getTodos,
     getTodo,
     updateCompleted,
-    addTag,
+    addTags,
     removeTag
 } = require('../controllers/todoController');
 
@@ -33,7 +33,7 @@ router.get('/todos/:id', getTodo);
 
 router.patch('/todos/:id/completed', updateCompleted);
 
-router.post('/todos/:id/tags', addTag);
+router.post('/todos/:id/tags', addTags);
 
 router.delete('/todos/:id/tags/:tag', removeTag);
 

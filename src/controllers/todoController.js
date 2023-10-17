@@ -179,7 +179,7 @@ const updateCompleted = async (req, res) => {
     }
 };
 
-const addTag = async (req, res) => {
+const addTags = async (req, res) => {
     try {
         const { id } = req.params;
         const { tags } = req.body;
@@ -253,7 +253,7 @@ module.exports = {
     getTodos,
     getTodo,
     updateCompleted,
-    addTag,
+    addTags,
     removeTag,
     handleRouteNotFoundError,
     handleIncorrectPath,
