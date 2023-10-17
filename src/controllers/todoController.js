@@ -21,7 +21,9 @@ const createTodo = async (req, res) => {
         const todo = await Todo.create({ title, description });
 
         if (tags && tags.length > 0) {
-            for (const tagName of tags) {
+            const tagNames = tags.split(',');
+
+            for (const tagName of tagNames) {
                 let [tag, created] = await Tag.findOrCreate({ where: { name: tagName } });
                 await todo.addTag(tag);
             }
@@ -52,7 +54,7 @@ const deleteTodo = async (req, res) => {
         const deletedCount = await Todo.destroy({ where: { id } });
 
         if (deletedCount === 0) {
-            logger.info(`Todo with ID:${id} not found`);
+            logger.warn(`Todo with ID:${id} not found`);
             return res.status(404).json({ error: 'Todo not found' });
         }
 
@@ -74,15 +76,19 @@ const editTodo = async (req, res) => {
         { where: { id }, returning: true, individualHooks: true }
         );
 
+        console.log(updatedTodo);
+
         if (updatedCount === 0) {
-            logger.info(`Todo with ID:${id} not found`);
+            logger.warn(`Todo with ID:${id} not found or the same`);
             return res.status(404).json({ error: 'Todo not found' });
         }
 
         await updatedTodo[0].setTags([]);
 
         if (tags && tags.length > 0) {
-            for (const tagName of tags) {
+            const tagNames = tags.split(',');
+
+            for (const tagName of tagNames) {
                 let [tag, created] = await Tag.findOrCreate({ where: { name: tagName } });
                 await updatedTodo[0].addTag(tag);
             }
@@ -139,7 +145,7 @@ const getTodo = async (req, res) => {
         );
 
         if (!todo) {
-            logger.info(`Todo with ID${id} not found`);
+            logger.warn(`Todo with ID${id} not found`);
             return res.status(404).json({ error: 'Todo not found' });
         }
 
@@ -161,7 +167,7 @@ const updateCompleted = async (req, res) => {
         );
 
         if (updatedCount === 0) {
-            logger.info(`Todo with ID:${id} not found`);
+            logger.warn(`Todo with ID:${id} not found`);
             return res.status(404).json({ error: 'Todo not found' });
         }
 
@@ -181,7 +187,7 @@ const addTag = async (req, res) => {
         const todo = await Todo.findByPk(id);
 
         if (!todo) {
-            logger.info(`Todo with ID:${id} not found`);
+            logger.warn(`Todo with ID:${id} not found`);
             return res.status(404).json({ error: 'Todo not found' });
         }
 
@@ -203,14 +209,14 @@ const removeTag = async (req, res) => {
         const todo = await Todo.findByPk(id);
 
         if (!todo) {
-            logger.info(`Todo with ID:${id} not found`);
+            logger.warn(`Todo with ID:${id} not found`);
             return res.status(404).json({ error: 'Todo not found' });
         }
 
         const existingTag = await Tag.findOne({ where: { name: tag } });
 
         if (!existingTag) {
-            logger.info(`Tag "${tag}" does not exist`);
+            logger.warn(`Tag "${tag}" does not exist`);
             return res.status(404).json({ error: 'Tag does not exist' });
         }
 
