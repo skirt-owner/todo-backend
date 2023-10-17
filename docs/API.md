@@ -321,9 +321,8 @@ Removes a tag from a todo with the specified ID.
 #### Handle Route Not Found
 
 ```
-*
+* (Any unknown endpoint)
 ```
-(Any unknown endpoint)
 
 **Response Codes:**
 
