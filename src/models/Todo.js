@@ -51,8 +51,7 @@ Todo.beforeUpdate((todo, options) => {
     todo.updatedAt = Sequelize.fn('NOW');
 });
 
-Tag.belongsToMany(Todo, { through: 'TodoTag', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-Todo.belongsToMany(Tag, { through: 'TodoTag', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-
+Tag.belongsToMany(Todo, { through: 'TagsTodos', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Todo.belongsToMany(Tag, { through: 'TagsTodos', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
 module.exports = { Todo };

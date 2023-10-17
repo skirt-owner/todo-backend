@@ -1,7 +1,7 @@
 const { Sequelize, DataTypes } = require('sequelize');
 
 const sequelize = require('../utils/database');
-const logger = require('../utils/logger');
+const logger = require('../utils/logger'); 
 
 const Tag = sequelize.define('Tag', {
     id: {
