@@ -10,9 +10,7 @@ const {
     getTodo,
     updateCompleted,
     addTag,
-    removeTag,
-    handleRouteNotFoundError,
-    handleIncorrectPath,
+    removeTag
 } = require('../controllers/todoController');
 
 const router = express.Router();
