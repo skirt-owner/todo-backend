@@ -54,4 +54,5 @@ Todo.beforeUpdate((todo, options) => {
 Tag.belongsToMany(Todo, { through: 'TodoTag', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 Todo.belongsToMany(Tag, { through: 'TodoTag', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
+
 module.exports = { Todo };

@@ -21,26 +21,22 @@ router.get('/status', getStatus);
 
 router.get('/server', getServerInfo);
 
-router.post('/notes', createTodo);
+router.post('/todos', createTodo);
 
-router.delete('/notes', deleteTodos);
+router.delete('/todos', deleteTodos);
 
-router.delete('/notes/:id', deleteTodo);
+router.delete('/todos/:id', deleteTodo);
 
-router.put('/notes/:id', editTodo);
+router.put('/todos/:id', editTodo);
 
-router.get('/notes', getTodos);
+router.get('/todos', getTodos);
 
-router.get('/notes/:id', getTodo);
+router.get('/todos/:id', getTodo);
 
-router.patch('/notes/:id/completed', updateCompleted);
+router.patch('/todos/:id/completed', updateCompleted);
 
-router.post('/notes/:id/tags', addTag);
+router.post('/todos/:id/tags', addTag);
 
-router.delete('/notes/:id/tags/:tag', removeTag);
-
-router.get('/error', handleRouteNotFoundError);
-
-router.use('*', handleIncorrectPath);
+router.delete('/todos/:id/tags/:tag', removeTag);
 
 module.exports = router;
