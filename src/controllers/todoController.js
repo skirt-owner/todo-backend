@@ -1,3 +1,5 @@
+const { Sequelize } = require('sequelize');
+
 const { Todo } = require('../models/Todo');
 const { Tag } = require('../models/Tag');
 const logger = require('../utils/logger');
@@ -24,37 +26,28 @@ const createTodo = async (req, res) => {
             return res.status(400).json({ error: 'Title for todo not provided' });
         }
 
-        const todo = await Todo.create({ title, description });
+        const todo = await Todo.create({ title, description }, { individualHooks: true });
 
         if (tags && tags.length > 0) {
             const tagNames = tags.split(',');
-            const tagPromises = tagNames.map(tagName =>
-                Tag.findOrCreate({ where: { name: tagName } })
-            );
-            const createdTags = await Promise.all(tagPromises);
-            const tagInstances = createdTags.map(([tag]) => tag);
-            await todo.addTags(tagInstances);
+            const tagObjects = tagNames.map((tagName) => ({
+                name: tagName,
+                todoId: todo.id
+            }));
+            const createdTags = await Tag.bulkCreate(tagObjects, { individualHooks: true });
         }
 
-        logger.info(`Created new todo with ID:${todo.id}`);
-
         const createdTodo = await Todo.findByPk(todo.id, {
-            include: [
-                {
-                    model: Tag,
-                    attributes: ['id', 'name'],
-                    through: { attributes: [] },
-                }
-            ]
+            include: 'tags',
         });
 
+        logger.info(`Created new todo with ID:${todo.id}`);
         res.status(201).json(createdTodo);
     } catch (error) {
         logger.error(`Failed to create a new todo: ${error.message}`);
         res.status(500).json({ error: 'Failed to create a new todo' });
     }
 };
-
 
 const deleteTodos = async (req, res) => {
     try {
@@ -89,114 +82,115 @@ const editTodo = async (req, res) => {
     try {
         const { id } = req.params;
         const { title, description, tags } = req.body;
-        
-        if (!title && !description && !(tags && tags.length > 0)) {
-            logger.warn('No data provided for update');
-            return res.status(400).json({ error: 'No data provided for update' });
+    
+        if (!(title || description || (tags && tags.length > 0))) {
+            logger.warn("No data to update");
+            return res.status(400).json({ error: "No data to update" });
         }
-        
-        const todo = await Todo.findByPk(id);
-
-        if (!todo) {
-            logger.warn('Todo not found');
-            return res.status(404).json({ error: 'Todo not found' });
-        }
-
-        if (title) {
-            todo.title = title;
-        }
-        if (description) {
-            todo.description = description;
-        }
-        
-        if (tags && tags.length > 0) {
-            await todo.setTags([]);
-
-            const tagNames = tags.split(',');
-            const tagPromises = tagNames.map(tagName =>
-                Tag.findOrCreate({ where: { name: tagName } })
-            );
-            const createdTags = await Promise.all(tagPromises);
-            const tagInstances = createdTags.map(([tag]) => tag);
-            await todo.addTags(tagInstances);
-        }
-        
-        await todo.save();
-        
-        logger.info(`Updated todo with ID:${id}`);
-
-        const editedTodo = await Todo.findByPk(id, {
-            include: [
-                {
-                    model: Tag,
-                    attributes: ['id', 'name'],
-                    through: { attributes: [] },
-                },
-            ],
+    
+        const updateValues = {};
+        if (title) updateValues.title = title;
+        if (description) updateValues.description = description;
+    
+        const [updatedRowsCount, [updatedTodo]] = await Todo.update(updateValues, {
+            where: { id },
+            individualHooks: true,
+            returning: true,
         });
-
-        res.status(200).json(editedTodo);
+    
+        if (updatedRowsCount === 0 && !updatedTodo) {
+            logger.warn("Todo not found");
+            return res.status(404).json({ error: "Todo not found" });
+        }
+  
+        if (tags && tags.length > 0) {
+            const existingTags = await Tag.findAll({
+                where: { todoId: updatedTodo.id },
+            });
+    
+            const tagNames = tags.split(",");
+            const existingTagNames = existingTags.map((tag) => tag.name);
+    
+            const tagsToAdd = tagNames.filter(
+                (tagName) => !existingTagNames.includes(tagName)
+            );
+            const tagsToRemove = existingTags.filter(
+                (tag) => !tagNames.includes(tag.name)
+            );
+    
+            if (tagsToRemove.length === existingTags.length) {
+                logger.warn("No data to update");
+                return res.status(404).json({ error: "No data to update" });
+            }
+    
+            await Tag.destroy({
+                where: {
+                    todoId: updatedTodo.id,
+                    name: tagsToRemove.map((tag) => tag.name),
+                },
+                individualHooks: true,
+            });
+    
+            const newTags = tagsToAdd.map((tagName) => ({
+                name: tagName,
+                todoId: updatedTodo.id,
+            }));
+    
+            const createdTags = await Tag.bulkCreate(newTags, { individualHooks: true });
+        }
+    
+        const updatedTodoWithTags = await Todo.findByPk(updatedTodo.id, { include: "tags" });
+    
+        res.status(200).json(updatedTodoWithTags);
     } catch (error) {
         logger.error(`Failed to update todo: ${error.message}`);
-        res.status(500).json({ error: 'Failed to update todo' });
+        res.status(500).json({ error: "Failed to update todo" });
     }
 };
+  
 
 const getTodos = async (req, res) => {
     try {
         let { sortBy, filterByTitle, filterByTags } = req.query;
-
+  
         if (!sortBy) {
             sortBy = 'DESC';
         } else if (sortBy !== 'ASC' && sortBy !== 'DESC') {
             return res.status(400).json({ error: 'Invalid sortBy value' });
         }
-
-        let whereClause = {};
+  
+        const whereClause = {};
         if (filterByTitle) {
             whereClause.title = filterByTitle;
         }
-
+    
         const todos = await Todo.findAll({
             where: whereClause,
             order: [['createdAt', sortBy]],
-            include: [
-                {
-                    model: Tag,
-                    attributes: ['id', 'name'],
-                    through: { attributes: [] },
-                },
-            ],
+            include: 'tags',
         });
-
+    
         if (filterByTags) {
             const tags = filterByTags.split(',');
-            const filteredTodos = todos.filter((todo) => {
-                return tags.every((tag) =>
-                    todo.Tags.some((todoTag) => todoTag.name === tag)
-                );
-            });
-
-            res.status(200).json(filteredTodos);
-        } else {
-            res.status(200).json(todos);
+            const filteredTodos = todos.filter((todo) => tags.every((tag) =>
+            todo.tags.some((todoTag) => todoTag.name === tag)));
+            return res.status(200).json(filteredTodos);
         }
+    
+        res.status(200).json(todos);
     } catch (error) {
         logger.error(`Failed to get todos: ${error.message}`);
         res.status(500).json({ error: 'Failed to get todos' });
     }
 };
+  
 
 const getTodo = async (req, res) => {
     try {
         const { id } = req.params;
         const todo = await Todo.findByPk(
             id,
-            { include: [{ 
-                model: Tag, 
-                attributes: ['id', 'name'] ,
-                through: { attributes: [] },
-            }] }
+            { include: 'tags' },
         );
 
         if (!todo) {
@@ -214,32 +208,23 @@ const getTodo = async (req, res) => {
 const updateCompleted = async (req, res) => {
     try {
         const { id } = req.params;
-
-        const todo = await Todo.findByPk(
-            id,
-            { include: [{ 
-                model: Tag, 
-                attributes: ['id', 'name'] ,
-                through: { attributes: [] },
-            }] }
+  
+        const [updatedRowsCount, [updatedRow]] = await Todo.update(
+            { completed: Sequelize.literal('NOT completed') },
+            { where: { id }, individualHooks: true, returning: true }
         );
-
-        if (!todo) {
+    
+        if (updatedRowsCount === 0) {
             return res.status(404).json({ error: 'Todo not found' });
         }
-
-        todo.completed = !todo.completed;
-
-        await todo.save();
-
+    
         logger.info(`Updated completed field of todo with ID:${id}`);
-        res.status(200).json(todo);
+        res.status(200).json({ completed: updatedRow.completed });
     } catch (error) {
         logger.error(`Failed to update completed field of todo: ${error.message}`);
         res.status(500).json({ error: 'Failed to update completed field of todo' });
     }
 };
-
 
 const addTags = async (req, res) => {
     try {
@@ -253,16 +238,31 @@ const addTags = async (req, res) => {
             return res.status(404).json({ error: 'Todo not found' });
         }
 
-        const tagNames = tags.split(',');
-        const tagPromises = tagNames.map(tagName =>
-            Tag.findOrCreate({ where: { name: tagName } })
+        const tagNames = tags.split(",");
+
+        const existingTags = await Tag.findAll({
+            where: { todoId: todo.id },
+        });
+        const existingTagNames = existingTags.map((tag) => tag.name);
+
+        const tagsToAdd = tagNames.filter(
+            (tagName) => !existingTagNames.includes(tagName)
         );
-        const createdTags = await Promise.all(tagPromises);
-        const tagInstances = createdTags.map(([tag]) => tag);
-        await todo.addTags(tagInstances);
+
+        if (tagsToAdd.length === 0) {
+            logger.warn('No data to update');
+            return res.status(404).json({ error: 'No data to update' });
+        }
+
+        const newTags = tagsToAdd.map((tagName) => ({
+            name: tagName,
+            todoId: todo.id,
+        }));
+
+        const createdTags = await Tag.bulkCreate(newTags, { individualHooks: true });
         
         logger.info(`Added tags "${tags}" to todo with ID:${id}`);
-        res.status(204).end();
+        res.status(201).json(createdTags);
     } catch (error) {
         logger.error(`Failed to add tag to todo: ${error.message}`);
         res.status(500).json({ error: 'Failed to add tag to todo' })
@@ -280,14 +280,14 @@ const removeTag = async (req, res) => {
             return res.status(404).json({ error: 'Todo not found' });
         }
 
-        const existingTag = await Tag.findOne({ where: { name: tag } });
+        const existingTag = await Tag.findOne({ where: { todoId: id, name: tag } });
 
         if (!existingTag) {
-            logger.warn(`Tag "${tag}" does not exist`);
-            return res.status(404).json({ error: 'Tag does not exist' });
+            logger.warn(`Tag "${tag}" does not exist for the specified todo`);
+            return res.status(404).json({ error: 'Tag does not exist for the specified todo' });
         }
 
-        await todo.removeTag(existingTag);
+        await existingTag.destroy();
 
         logger.info(`Removed tag "${tag}" from todo with ID:${id}`);
         res.status(204).end();
@@ -296,6 +296,7 @@ const removeTag = async (req, res) => {
         res.status(500).json({ error: 'Failed to remove tag from todo' });
     }
 };
+
 
 const handleRouteNotFoundError = (req, res) => {
     res.status(404).json({ error: 'Requested resource not found' });

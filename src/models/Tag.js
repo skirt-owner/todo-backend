@@ -2,6 +2,7 @@ const { Sequelize, DataTypes } = require('sequelize');
 
 const sequelize = require('../utils/database');
 const logger = require('../utils/logger'); 
+const { Todo } = require('./Todo');
 
 const Tag = sequelize.define('Tag', {
     id: {
@@ -10,10 +11,17 @@ const Tag = sequelize.define('Tag', {
         autoIncrement: true,
         primaryKey: true,
     },
+    todoId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+          model: Todo,
+          key: 'id',
+        },
+    },
     name: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
     },
     createdAt: {
         type: DataTypes.DATE,
@@ -41,5 +49,8 @@ Tag.beforeUpdate((todo, options) => {
     logger.info(`Updating tag with ID:${todo.id}`);
     todo.updatedAt = Sequelize.fn('NOW');
 });
+
+Todo.hasMany(Tag, { as: 'tags', foreignKey: 'todoId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Tag.belongsTo(Todo, { foreignKey: 'todoId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
 module.exports = { Tag };

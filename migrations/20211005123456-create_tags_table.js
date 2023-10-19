@@ -10,9 +10,18 @@ module.exports = {
                 primaryKey: true,
                 type: Sequelize.INTEGER
             },
+            todoId: {
+                type: Sequelize.INTEGER,
+                allowNull: false,
+                references: {
+                    model: 'Todos',
+                    key: 'id',
+                },
+                onUpdate: 'CASCADE',
+                onDelete: 'CASCADE',
+            },
             name: {
                 allowNull: false,
-                unique: true,
                 type: Sequelize.STRING
             },
             createdAt: {
@@ -26,6 +35,7 @@ module.exports = {
                 defaultValue: Sequelize.fn('NOW')
             }
         });
+      
     },
     down: async (queryInterface, Sequelize) => {
         await queryInterface.dropTable('Tags');
