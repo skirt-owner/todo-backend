@@ -88,11 +88,11 @@ const editTodo = async (req, res) => {
             return res.status(400).json({ error: "No data to update" });
         }
     
-        const updateValues = {};
-        if (title) updateValues.title = title;
-        if (description) updateValues.description = description;
+        const updatedValues = {};
+        if (title) updatedValues.title = title;
+        if (description) updatedValues.description = description;
     
-        const [updatedRowsCount, [updatedTodo]] = await Todo.update(updateValues, {
+        const [updatedRowsCount, [updatedTodo]] = await Todo.update(updatedValues, {
             where: { id },
             individualHooks: true,
             returning: true,
