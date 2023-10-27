@@ -15,8 +15,8 @@ const serverPort = 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(responseTimeMiddleware);
 app.use(requestIdMiddleware);
+app.use(responseTimeMiddleware);
 app.use(morganMiddleware);
 
 app.use('/api', todoRoutes);
