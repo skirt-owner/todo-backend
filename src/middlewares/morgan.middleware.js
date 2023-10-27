@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 
 morgan.token('requestId', (req, res) => {
-    return req.requestId;
+    return res.getHeader('X-Request-ID');
 });  
 
 const stream = {
