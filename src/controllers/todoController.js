@@ -51,12 +51,15 @@ const createTodo = async (req, res) => {
 
 const deleteTodos = async (req, res) => {
     try {
-        await Todo.destroy({ where: {}, individualHooks: true });
-        logger.info('Deleted all todos');
+        const { ids } = req.body;
+        const todoIds = ids.split(",");
+        
+        await Todo.destroy({ where: { id: todoIds }, individualHooks: true });
+        logger.info(`Deleted ${todoIds.length} todos`);
         res.status(204).end();
     } catch (error) {
-        logger.error(`Failed to delete all todos: ${error.message}`);
-        res.status(500).json({ error: 'Failed to delete all todos' });
+        logger.error(`Failed to delete chosen todos: ${error.message}`);
+        res.status(500).json({ error: 'Failed to delete chosen todos' });
     }    
 };
 
@@ -81,6 +84,7 @@ const deleteTodo = async (req, res) => {
 const editTodo = async (req, res) => {
     try {
         const { id } = req.params;
+        logger.info(id);
         const { title, description, tags } = req.body;
     
         if (!(title || description || (tags && tags.length > 0))) {

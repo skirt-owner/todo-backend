@@ -3,6 +3,7 @@ const express = require('express');
 const morganMiddleware = require('./middlewares/morgan.middleware');
 const responseTimeMiddleware = require('./middlewares/responseTime.middleware');
 const requestIdMiddleware = require('./middlewares/requestId.middleware');
+const crossDomainMiddleware = require('./middlewares/crossDomain.middleware');
 
 const { handleRouteNotFoundError, handleIncorrectPath } = require('./controllers/todoController');
 const todoRoutes = require('./routes/todoRoutes');
@@ -15,6 +16,7 @@ const serverPort = 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use(crossDomainMiddleware);
 app.use(requestIdMiddleware);
 app.use(responseTimeMiddleware);
 app.use(morganMiddleware);
