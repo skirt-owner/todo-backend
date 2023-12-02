@@ -95,20 +95,32 @@ Creates a new todo with the provided data.
 | 201         | `CREATED` - Returns the created todo |
 | 500         | `INTERNAL SERVER ERROR` - Failed to create a new todo |
 
-#### Delete all Todos
+#### Delete all Chosen Todos
 
 ```http
 DELETE /todos
 ```
 
-Deletes all todos.
+Deletes chosen todos.
+
+**Request Body:**
+
+```javascript
+{
+  "ids": string
+}
+```
+
+| Field        | Type   | Description                             |
+| ------------ | ------ | --------------------------------------- |
+| `ids`       | `string` | Comma-separated list of todo ids to delete|
 
 **Response Codes:**
 
 | Status Code | Description                      |
 | ----------- | -------------------------------- |
-| 204         | `NO CONTENT` - All todos deleted    |
-| 500         | `INTERNAL SERVER ERROR` - Failed to delete all todos |
+| 204         | `NO CONTENT` - Chosen todos deleted    |
+| 500         | `INTERNAL SERVER ERROR` - Failed to delete chosen todos |
 
 #### Delete a Todo
 
